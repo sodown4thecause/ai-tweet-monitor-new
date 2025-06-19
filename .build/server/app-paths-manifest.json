@@ -1,0 +1,11 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/analytics/[username]/route": "app/api/analytics/[username]/route.js",
+  "/api/collection/run/route": "app/api/collection/run/route.js",
+  "/api/dashboard/stats/route": "app/api/dashboard/stats/route.js",
+  "/api/accounts/route": "app/api/accounts/route.js",
+  "/api/trending/route": "app/api/trending/route.js",
+  "/page": "app/page.js",
+  "/api/tweets/[id]/rewrites/route": "app/api/tweets/[id]/rewrites/route.js",
+  "/api/tweets/route": "app/api/tweets/route.js"
+}

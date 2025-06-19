@@ -1,0 +1,262 @@
+// AI Tweet Monitor System Schema
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/ai_tweet_monitor/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// AI accounts being monitored
+model Account {
+  id          String   @id @default(cuid())
+  username    String   @unique // Twitter handle without @
+  displayName String?
+  description String?
+  followerCount Int?
+  profileImageUrl String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tweets      Tweet[]
+  
+  @@map("accounts")
+}
+
+// Raw tweet data
+model Tweet {
+  id              String   @id @default(cuid())
+  tweetId         String   @unique // Twitter's tweet ID
+  accountId       String
+  content         String
+  authorUsername  String
+  authorDisplayName String?
+  createdAt       DateTime
+  fetchedAt       DateTime @default(now())
+  
+  // Engagement metrics
+  likeCount       Int      @default(0)
+  retweetCount    Int      @default(0)
+  replyCount      Int      @default(0)
+  quoteCount      Int      @default(0)
+  viewCount       Int?
+  
+  // Calculated engagement score
+  engagementScore Float    @default(0)
+  normalizedScore Float    @default(0)
+  
+  // Tweet metadata
+  hashtags        String[] @default([])
+  mentions        String[] @default([])
+  urls            String[] @default([])
+  isRetweet       Boolean  @default(false)
+  isReply         Boolean  @default(false)
+  isQuote         Boolean  @default(false)
+  
+  // Trending status
+  isTrending      Boolean  @default(false)
+  trendingScore   Float    @default(0)
+  
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  rewrites        Rewrite[]
+  analytics       TweetAnalytics[]
+  
+  @@map("tweets")
+  @@index([tweetId])
+  @@index([accountId])
+  @@index([createdAt])
+  @@index([engagementScore])
+  @@index([isTrending])
+}
+
+// Rewritten tweets
+model Rewrite {
+  id              String   @id @default(cuid())
+  tweetId         String
+  originalContent String
+  rewrittenContent String
+  style           RewriteStyle @default(ENGAGING)
+  tone            RewriteTone  @default(PROFESSIONAL)
+  
+  // Quality metrics
+  similarityScore Float?   // How similar to original
+  engagementPrediction Float? // Predicted engagement
+  qualityScore    Float?   // Overall quality rating
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  isApproved      Boolean  @default(false)
+  isUsed          Boolean  @default(false)
+  
+  tweet           Tweet    @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+  
+  @@map("rewrites")
+  @@index([tweetId])
+  @@index([isApproved])
+  @@index([createdAt])
+}
+
+// Tweet analytics over time
+model TweetAnalytics {
+  id              String   @id @default(cuid())
+  tweetId         String
+  
+  // Snapshot metrics
+  likeCount       Int
+  retweetCount    Int
+  replyCount      Int
+  quoteCount      Int
+  viewCount       Int?
+  engagementScore Float
+  
+  // Time-based data
+  recordedAt      DateTime @default(now())
+  hoursAfterPost  Int      // Hours since original tweet
+  
+  tweet           Tweet    @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+  
+  @@map("tweet_analytics")
+  @@index([tweetId])
+  @@index([recordedAt])
+}
+
+// Trending topics and hashtags
+model TrendingTopic {
+  id              String   @id @default(cuid())
+  topic           String   @unique
+  type            TopicType @default(HASHTAG)
+  
+  // Trend metrics
+  mentionCount    Int      @default(0)
+  engagementSum   Float    @default(0)
+  trendScore      Float    @default(0)
+  velocity        Float    @default(0) // Rate of growth
+  
+  // Time tracking
+  firstSeen       DateTime @default(now())
+  lastSeen        DateTime @default(now())
+  peakAt          DateTime?
+  
+  // Status
+  isActive        Boolean  @default(true)
+  isTrending      Boolean  @default(false)
+  
+  @@map("trending_topics")
+  @@index([topic])
+  @@index([trendScore])
+  @@index([isTrending])
+}
+
+// System configuration and settings
+model SystemConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  description     String?
+  updatedAt       DateTime @updatedAt
+  
+  @@map("system_config")
+}
+
+// Job tracking for background tasks
+model Job {
+  id              String   @id @default(cuid())
+  type            JobType
+  status          JobStatus @default(PENDING)
+  
+  // Job data
+  data            Json?
+  result          Json?
+  error           String?
+  
+  // Timing
+  createdAt       DateTime @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  @@map("jobs")
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Data collection logs
+model CollectionLog {
+  id              String   @id @default(cuid())
+  accountId       String?
+  
+  // Collection metrics
+  tweetsCollected Int      @default(0)
+  apiCalls        Int      @default(0)
+  errors          Int      @default(0)
+  
+  // Status
+  status          CollectionStatus @default(SUCCESS)
+  errorMessage    String?
+  
+  // Timing
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  duration        Int?     // Duration in seconds
+  
+  @@map("collection_logs")
+  @@index([accountId])
+  @@index([startedAt])
+  @@index([status])
+}
+
+// Enums
+enum RewriteStyle {
+  ENGAGING
+  THREAD
+  HOOK_BASED
+  STORYTELLING
+  EDUCATIONAL
+  VIRAL
+  QUESTION
+  CONTROVERSIAL
+}
+
+enum RewriteTone {
+  PROFESSIONAL
+  CASUAL
+  HUMOROUS
+  SERIOUS
+  INSPIRATIONAL
+  TECHNICAL
+  CONVERSATIONAL
+}
+
+enum TopicType {
+  HASHTAG
+  MENTION
+  KEYWORD
+  PHRASE
+}
+
+enum JobType {
+  TWEET_COLLECTION
+  TRENDING_ANALYSIS
+  REWRITE_GENERATION
+  ANALYTICS_UPDATE
+  CLEANUP
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CollectionStatus {
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  RATE_LIMITED
+}
