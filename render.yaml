@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-tweet-monitor
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-tweet-monitor-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      # Add your other environment variables here
+
+databases:
+  - name: ai-tweet-monitor-db
+    databaseName: ai_tweet_monitor
+    user: ai_tweet_monitor_user
